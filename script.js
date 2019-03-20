@@ -2,12 +2,23 @@
 let OSMData = {
     routeMasters: []
 }
+let GTFSData = {}
+
 
 // Some constants
 const OSM_API = 'https://www.openstreetmap.org/api/0.6'
 const DEBUG = true
+const MOCK = true
 
-const debugOSMData = () => {
+// Temporary variables (will be filled by user later)
+const AGENCY_URL = 'http://www.cbtu.gov.br/'
+const AGENCY_TIMEZONE = 'America/Recife'
+
+/**
+ * Debugs OSM data, printing information on screen.
+ * @param {Object} OSMData
+ */
+const debugOSMData = OSMData => {
     let debug = ``
     if (OSMData.routeMasters && OSMData.routeMasters.length > 0) {
         OSMData.routeMasters.forEach(routeMaster => {
@@ -36,14 +47,21 @@ const debugOSMData = () => {
     document.querySelector('pre').textContent = debug
 }
 
-// Fetch OSM data for a route master id
+/**
+ * Fetch OSM data for a route master id
+ * @param {Number} id A Route Master relation ID
+ */
 const fetchRouteMaster = async id => {
     let routeMasterData = await fetchOSMData('relation', id)
     OSMData.routeMasters.push(routeMasterData)
     console.log(OSMData)
 }
 
-// Async function to get data from OSM API
+/**
+ * Async function to get data from OSM API
+ * @param {String} type OSM data type (node, way or relation)
+ * @param {Number} id OpenStreetMap object ID
+ */
 const fetchOSMData = async (type, id) => {
     let url = `${OSM_API}/${type}/${id}`
     console.log('Fetching ' + url)
@@ -52,7 +70,11 @@ const fetchOSMData = async (type, id) => {
     return await parseOSMData(type, data)
 }
 
-// Parse data from OSM API
+/**
+ * Parse data from OSM API
+ * @param {String} type OSM data type (node, way or relation)
+ * @param {String} xmlText A XML string returned by OSM API
+ */
 const parseOSMData = async (type, xmlText) => {
     let parser = new DOMParser()
     let doc = parser.parseFromString(xmlText, 'application/xml')
@@ -82,8 +104,10 @@ const parseOSMData = async (type, xmlText) => {
     return attributes
 }
 
-// returns an object with all values
-// <tag k="v"/> => {k:"v"}
+/**
+ * Read XMLNode attributes and return an object with all values - <tag k="v"/> => {k:"v"}
+ * @param {XMLNode} node A XML Node to be processed
+ */
 const readNodeAttributes = node => {
     let obj = {}
     let nodeAttributesLength = node.attributes.length
@@ -95,8 +119,11 @@ const readNodeAttributes = node => {
     return obj
 }
 
-// returns an array of named descendents with all values
-// <tag k1="v1"><tag k2="v2"> => [{k1:"v1", k2:"v2"}]
+/**
+ * Read XMLNode descendants and return an array with all values - <tag k1="v1"><tag k2="v2"> => [{k1:"v1", k2:"v2"}]
+ * @param {XMLNode} node A XML Node to be processed
+ * @param {String} name The descendants that you want to process
+ */
 const readNodeDescendentsNamed = (node, name) => {
     let descendentNodes = node.querySelectorAll(name)
     let descendentList = []
@@ -104,7 +131,9 @@ const readNodeDescendentsNamed = (node, name) => {
     return descendentList
 }
 
-// Simple function to call API to fetch each route master ID entered by user
+/**
+ * Simple function to call API to fetch each route master ID entered by user
+ */
 const readRouteMasters = () => {
     let routeMastersIDs = document.querySelector('#routemasters').value.split("\n")
     routeMastersIDs.forEach(routeMasterID => {
@@ -112,10 +141,67 @@ const readRouteMasters = () => {
     })
 }
 
+/**
+ * Reads OSM Data and process it into a GTFS object - which will be later converted into a set of CSVs
+ */
+const convertToGTFS = () => {
+    let agencies = []
+    OSMData.routeMasters.forEach(routeMaster => {
+        // Agency
+        // start by reading operator tags
+        let operatorArray = routeMaster.tags.filter(tag => tag.k === 'operator')
+        if (operatorArray.length) {
+            // OSM tags are unique, so if there are more than one, there's only one, we can read [0] directly instead of looping.
+            let operator = operatorArray[0].v
+            // if we don't have it on our array already
+            if (agencies.filter(agency => agency.agency_name === operator).length === 0) {
+                agencies.push({
+                    agency_name: operator,
+                    agency_url: AGENCY_URL,
+                    agency_timezone: AGENCY_TIMEZONE
+                })
+            }
+        }
+    })
+    GTFSData.agencies = agencies
+    console.log(GTFSData)
+    processGTFS()
+}
+
+/**
+ * Reads the GTFSData object and converts it to CSV
+ */
+const processGTFS = () => {
+    // Agencies
+    let agenciesCSV = ''
+    if (GTFSData.agencies.length) {
+        // read params from first item
+        agenciesCSV += Object.keys(GTFSData.agencies[0]).join(',') + '\n'
+        // then read agencies
+        GTFSData.agencies.forEach(agency => {
+            agenciesCSV += Object.values(agency).join(',') + '\n'
+        })
+    }
+    console.log('agency.txt')
+    console.log(agenciesCSV)
+}
+
 // Attach button event
-document.querySelector('#process').onclick = readRouteMasters
+document.querySelector('#fetch').onclick = readRouteMasters
+document.querySelector('#convert').onclick = convertToGTFS
 
 // Fires debug
 if (DEBUG) {
-    setInterval(() => { debugOSMData() }, 100)
+    setInterval(() => { debugOSMData(OSMData) }, 100)
+}
+
+// Gets mock data
+if (MOCK) {
+    const getMockData = async () => {
+        let response = await fetch('mock.json')
+        let data = await response.text()
+        OSMData = JSON.parse(data)
+        console.log(OSMData)
+    }
+    getMockData()
 }
