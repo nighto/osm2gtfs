@@ -146,6 +146,10 @@ const readRouteMasters = () => {
  */
 const convertToGTFS = () => {
     let agencies = []
+    let stops = []
+    let routes = []
+    let shapes = []
+    // for every routemaster we have
     OSMData.routeMasters.forEach(routeMaster => {
         // Agency
         // start by reading operator tags
@@ -158,14 +162,110 @@ const convertToGTFS = () => {
                 agencies.push({
                     agency_name: operator,
                     agency_url: AGENCY_URL,
-                    agency_timezone: AGENCY_TIMEZONE
+                    agency_timezone: AGENCY_TIMEZONE,
                 })
             }
+            // Known bug / limitation:
+            // 1) Currently Agencies' GTFS fields not available on OSM (Agency URL and Timezone) are hardcoded.
         }
+
+        // Routes
+        // (GTFS Routes are based on OSM routemaster (eg. L1) information, not on OSM route (eg. L1 A->B) information.)
+        let route_type
+        let routeTypeArray = routeMaster.tags.filter(tag => tag.k === 'route_master')
+        if (routeTypeArray.length) {
+            // test route_types
+            switch(routeTypeArray[0].v) {
+                case 'subway':
+                    route_type = 1
+                    break
+                default:
+                    route_type = 0 // route_type has no default value, setting first one so it doesn't fail
+            }
+        }
+        routes.push({
+            route_id: routeMaster.id,
+            route_short_name: readTagValue(routeMaster.tags, 'name'),
+            route_long_name: readTagValue(routeMaster.tags, 'ref'),
+            route_type,
+            route_color: readTagValue(routeMaster.tags, 'colour') // notice OSM uses British English, i.e. "colour" instead of "color"
+        })
+        // Known bug / limitation:
+        // 2) route_color is an optional attribute, so if no routes have it, we should erase this attribute
+
+        // for every route in route master
+        routeMaster.members.forEach(route => {
+            // Stops
+            // for every stop in route
+            route.data.members.filter(routeMember => routeMember.role === 'stop').forEach(stop => {
+                stops.push({
+                    stop_id: stop.ref,
+                    stop_name: readTagValue(stop.data.tags, 'name'),
+                    stop_lat: stop.data.lat,
+                    stop_lon: stop.data.lon,
+                })
+                // Known bugs / limitations:
+                // 3) doesn't check for stop existence (would duplicate same stop if used by two or more different lines)
+                // 4) doesn't check for similar stop existence (GTFS allows to group two stops into a single station, but that's optional)
+            })
+
+            // Shapes
+            // for every way in route
+            let shapeSequence = 1
+            let shape = []
+            route.data.members.filter(routeMember => routeMember.type === 'way').forEach(way => {
+                // for every node in way
+                way.data.nds.forEach(node => {
+                    shape.push({
+                        shape_id: route.ref,
+                        shape_pt_lat: node.data.lat,
+                        shape_pt_lon: node.data.lon,
+                        shape_pt_sequence: shapeSequence++
+                    })
+                })
+            })
+            // now we have to deduplicate points, as each way would have their end node being the same as next way start point
+            let uniqueShape = uniqByWithoutSequence(shape, JSON.stringify)
+            // finally, append to shapes array
+            shapes = shapes.concat(uniqueShape)
+        })
     })
     GTFSData.agencies = agencies
+    GTFSData.stops = stops
+    GTFSData.routes = routes
+    GTFSData.shapes = shapes
     console.log(GTFSData)
     processGTFS()
+}
+
+/**
+ * 
+ * @param {Array} arr Array to be filtered
+ * @param {Function} key Function to apply to each Array element, for instance JSON.stringify
+ */
+const uniqByWithoutSequence = (arr, key) => {
+    let seen = {}
+    return arr.filter(item => {
+        let itemWithoutId = JSON.parse(JSON.stringify(item))
+        delete itemWithoutId.shape_pt_sequence
+        let k = key(itemWithoutId)
+        return seen.hasOwnProperty(k) ? false : (seen[k] = true)
+    })
+}
+
+/**
+ * Reads a tag value if it exists on OSM data, otherwise return empty string
+ * @param {Object[]} tags Tags array that you want to search
+ * @param {String} tags[].k Key name
+ * @param {String} tags[].v Key value
+ * @param {String} keyName the key you want to return its value
+ */
+const readTagValue = (tags, keyName) => {
+    let filteredTagArray = tags.filter(tag => tag.k === keyName)
+    if (filteredTagArray.length) {
+        return filteredTagArray[0].v // tags can't repeat, if found it will be the 1st element
+    }
+    return ''
 }
 
 /**
@@ -173,17 +273,48 @@ const convertToGTFS = () => {
  */
 const processGTFS = () => {
     // Agencies
-    let agenciesCSV = ''
-    if (GTFSData.agencies.length) {
+    let agenciesCSV = writeCSVString(GTFSData.agencies)
+    debugGTFS('agency', agenciesCSV)
+    // Stops
+    let stopsCSV = writeCSVString(GTFSData.stops)
+    debugGTFS('stops', stopsCSV)
+    // Routes
+    let routesCSV = writeCSVString(GTFSData.routes)
+    debugGTFS('routes', routesCSV)
+    // Shapes
+    let shapesCSV = writeCSVString(GTFSData.shapes)
+    debugGTFS('shapes', shapesCSV)
+}
+
+/**
+ * Writes a CSV string based on a generic objects' array
+ * @param {Object[]} data Array of GTFS objects
+ */
+const writeCSVString = data => {
+    let csvLinesArray = []
+    // test if there's at least one element in array
+    if (data.length) {
         // read params from first item
-        agenciesCSV += Object.keys(GTFSData.agencies[0]).join(',') + '\n'
-        // then read agencies
-        GTFSData.agencies.forEach(agency => {
-            agenciesCSV += Object.values(agency).join(',') + '\n'
+        csvLinesArray.push(Object.keys(data[0]).join(','))
+        // then read each object
+        data.forEach(obj => {
+            csvLinesArray.push(Object.values(obj).join(','))
         })
     }
-    console.log('agency.txt')
-    console.log(agenciesCSV)
+    // finally, returns array as a single string with a line-break between each line
+    return csvLinesArray.join('\n')
+}
+
+/**
+ * Prints GTFS CSV debug if needed
+ * @param {String} elementId name of HTML element to write CSV into
+ * @param {String} data CSV data to write
+ */
+const debugGTFS = (elementId, data) => {
+    if (DEBUG) {
+        let element = document.querySelector('#' + elementId)
+        element.innerHTML = data
+    }
 }
 
 // Attach button event
