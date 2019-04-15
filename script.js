@@ -3,6 +3,7 @@ let OSMData = {
     routeMasters: []
 }
 let GTFSData = {}
+let manualData = {}
 
 
 // Some constants
@@ -141,6 +142,8 @@ const readRouteMasters = () => {
     })
 }
 
+
+
 /**
  * Reads OSM Data and process it into a GTFS object - which will be later converted into a set of CSVs
  */
@@ -161,12 +164,10 @@ const convertToGTFS = () => {
             if (agencies.filter(agency => agency.agency_name === operator).length === 0) {
                 agencies.push({
                     agency_name: operator,
-                    agency_url: AGENCY_URL,
-                    agency_timezone: AGENCY_TIMEZONE,
+                    agency_url: document.querySelector(`#agency${agencies.length}_url`).value,
+                    agency_timezone: document.querySelector(`#agency${agencies.length}_timezone`).value,
                 })
             }
-            // Known bug / limitation:
-            // 1) Currently Agencies' GTFS fields not available on OSM (Agency URL and Timezone) are hardcoded.
         }
 
         // Routes
@@ -317,8 +318,48 @@ const debugGTFS = (elementId, data) => {
     }
 }
 
+const prepareManualInputs = () => {
+    manualData.agencies = []
+    let agencyManual = ''
+    OSMData.routeMasters.forEach(routeMaster => {
+        // Agency
+        // start by reading operator tags
+        let operatorArray = routeMaster.tags.filter(tag => tag.k === 'operator')
+        if (operatorArray.length) {
+            // OSM tags are unique, so if there are more than one, there's only one, we can read [0] directly instead of looping.
+            let operator = operatorArray[0].v
+            // if we don't have it on our array already
+            if (manualData.agencies.filter(agency => agency.agency_name === operator).length === 0) {
+                manualData.agencies.push({
+                    agency_name: operator,
+                })
+            }
+        }
+    })
+    agencyManual += `<table>
+        <thead>
+            <tr>
+                <th>Operator</th>
+                <th>URL</th>
+                <th>Timezone</th>
+            </tr>
+        </thead>
+        <tbody>`
+    manualData.agencies.forEach((agency, index) => {
+        agencyManual += `<tr>
+            <td>${agency.agency_name}</td>
+            <td><input id="agency${index}_url" value="${AGENCY_URL}"></td>
+            <td><input id="agency${index}_timezone" value="${AGENCY_TIMEZONE}"></td>
+        </tr>`
+    })
+    agencyManual += `</tbody></table>`
+
+    document.querySelector('#agency_manual').innerHTML = agencyManual
+}
+
 // Attach button event
 document.querySelector('#fetch').onclick = readRouteMasters
+document.querySelector('#prepareManual').onclick = prepareManualInputs
 document.querySelector('#convert').onclick = convertToGTFS
 
 // Fires debug
