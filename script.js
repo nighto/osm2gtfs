@@ -251,8 +251,49 @@ const duplicateRouteCalendar = routeIndex => {
     departuresCell.appendChild(newDepartures)
 }
 
+const processDepartures = departures => {
+    let processedArray = []
+    let departuresArray = departures.replace(/\:/g, '').split(' ')
+}
+
+const processDeparture = departure => {
+    if (departure.toString().indexOf('-') === -1 && departure.toString().indexOf('/') === -1) {
+        return [processSingleDeparture(departure)]
+    }
+    let departureBits = departure.split(/[\-\/]/) // first begin, second end, third interval
+    let time = []
+    let beginArray = processSingleDeparture(departureBits[0]).split(':')
+    let endArray = processSingleDeparture(departureBits[1]).split(':')
+    let interval = parseInt(departureBits[2], 10)
+
+    let beginTime = new Date()
+    beginTime.setHours(beginArray[0])
+    beginTime.setMinutes(beginArray[1])
+    beginTime.setSeconds(beginArray[2])
+    beginTime.setMilliseconds(0)
+    let endTime = new Date()
+    endTime.setHours(endArray[0])
+    endTime.setMinutes(endArray[1])
+    endTime.setSeconds(endArray[2])
+    endTime.setMilliseconds(0)
+
+    let current = beginTime
+    do {
+        time.push(`${current.getHours().toString().padStart(2,'0')}:${current.getMinutes().toString().padStart(2,'0')}:${current.getSeconds().toString().padStart(2,'0')}`)
+        current.setMinutes(current.getMinutes() + interval)
+    } while (current <= endTime)
+    return time
+}
+
+const processSingleDeparture = departure => {
+    if (departure.toString().length <= 4) {
+        return `${departure.toString().padStart(4, '0').substr(0,2)}:${departure.toString().substr(-2)}:00`
+    }
+    return `${departure.toString().padStart(6, '0').substr(0,2)}:${departure.toString().substr(-4, 2)}:${departure.toString().substr(-2)}`
+}
+
 /**
- * Reads OSM Data and process it into a GTFS object - which will be later converted into a set of CSVs
+ * Reads OSM and manual data and process it into a GTFS object - which will be later converted into a set of CSVs
  */
 const convertToGTFS = () => {
     let agencies = []
