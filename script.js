@@ -271,18 +271,43 @@ const processDeparture = departure => {
     beginTime.setMinutes(beginArray[1])
     beginTime.setSeconds(beginArray[2])
     beginTime.setMilliseconds(0)
+    let current = new Date() // current of equal value of begin
+    current.setHours(beginArray[0])
+    current.setMinutes(beginArray[1])
+    current.setSeconds(beginArray[2])
+    current.setMilliseconds(0)
     let endTime = new Date()
     endTime.setHours(endArray[0])
     endTime.setMinutes(endArray[1])
     endTime.setSeconds(endArray[2])
     endTime.setMilliseconds(0)
 
-    let current = beginTime
     do {
-        time.push(`${current.getHours().toString().padStart(2,'0')}:${current.getMinutes().toString().padStart(2,'0')}:${current.getSeconds().toString().padStart(2,'0')}`)
+        time.push(`${getPaddedHours(current, beginTime)}:${getPaddedMinutes(current)}:${getPaddedSeconds(current)}`)
         current.setMinutes(current.getMinutes() + interval)
     } while (current <= endTime)
     return time
+}
+
+const getPaddedHours = (date, beginDate) => {
+    let beginDay = beginDate.getDate()
+    let currentDay = date.getDate()
+    if (beginDay === currentDay) {
+        return getPaddedNumber(date.getHours())
+    }
+    return getPaddedNumber(date.getHours() + 24)
+}
+
+const getPaddedMinutes = date => {
+    return getPaddedNumber(date.getMinutes())
+}
+
+const getPaddedSeconds = date => {
+    return getPaddedNumber(date.getSeconds())
+}
+
+const getPaddedNumber = num => {
+    return num.toString().padStart(2,'0')
 }
 
 const processSingleDeparture = departure => {
