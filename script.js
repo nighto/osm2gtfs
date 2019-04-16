@@ -142,7 +142,114 @@ const readRouteMasters = () => {
     })
 }
 
+/**
+ * Prepares manual input fields so user can enter information not available on OSM
+ */
+const prepareManualInputs = () => {
+    // Agencies
+    manualData.agencies = []
+    let agencyManual = ''
+    OSMData.routeMasters.forEach(routeMaster => {
+        // Agency
+        // start by reading operator tags
+        let operatorArray = routeMaster.tags.filter(tag => tag.k === 'operator')
+        if (operatorArray.length) {
+            // OSM tags are unique, so if there are more than one, there's only one, we can read [0] directly instead of looping.
+            let operator = operatorArray[0].v
+            // if we don't have it on our array already
+            if (manualData.agencies.filter(agency => agency.agency_name === operator).length === 0) {
+                manualData.agencies.push({
+                    agency_name: operator,
+                })
+            }
+        }
+    })
+    agencyManual += `<table class="table">
+        <thead>
+            <tr>
+                <th>Operator</th>
+                <th>URL</th>
+                <th>Timezone</th>
+            </tr>
+        </thead>
+        <tbody>`
+    manualData.agencies.forEach((agency, index) => {
+        agencyManual += `<tr>
+            <td>${agency.agency_name}</td>
+            <td><input id="agency${index}_url" value="${AGENCY_URL}" class="form-control"></td>
+            <td><input id="agency${index}_timezone" value="${AGENCY_TIMEZONE}" class="form-control"></td>
+        </tr>`
+    })
+    agencyManual += `</tbody></table>`
 
+    document.querySelector('#agency_manual').innerHTML = agencyManual
+
+    // Routes
+    manualData.routes = []
+    let routeCalendarManual = `<table class="table">
+        <thead>
+            <tr>
+                <th>Route</th>
+                <th>Calendar</th>
+                <th>Departures</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+    `
+    
+    OSMData.routeMasters.forEach(routeMaster => {
+        routeMaster.members.forEach(route => {
+            console.log(route)
+            let name = ''
+            let tagName = route.data.tags.filter(tag => tag.k === 'name')
+            let index = manualData.routes.length
+            if (tagName.length) {
+                name = tagName[0].v
+            }
+            routeCalendarManual += `<tr id="routeCalendar${index}">
+                <td>${name}</td>
+                <td id="route${index}_calendar" class="routeCalendar"><div>${writeCalendarInput(index, 0)}</div></td>
+                <td id="route${index}_departures"><div>${writeDeparturesInput(index, 0)}</div></td>
+                <td>
+                    <button onclick="duplicateRouteCalendar(${index})">➕</button>
+                </td>
+            </tr>`
+            manualData.routes.push(route)
+        })
+    })
+
+    routeCalendarManual += `</tbody></table>`
+    document.querySelector('#route_calendar_manual').innerHTML = routeCalendarManual
+}
+
+const writeCalendarInput = (routeIndex, calendarIndex) => {
+    return `<input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_monday">M
+    <input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_tuesday">T
+    <input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_wednesday">W
+    <input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_thursday">T
+    <input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_friday">F
+    <input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_saturday">S
+    <input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_sunday">S`
+}
+
+const writeDeparturesInput = (routeIndex, departureIndex) => {
+    return `<input id="route${routeIndex}_departures${departureIndex}_input" class="form-control">`
+}
+
+const duplicateRouteCalendar = routeIndex => {
+    let calendarCell = document.querySelector(`#route${routeIndex}_calendar`)
+    let departuresCell = document.querySelector(`#route${routeIndex}_departures`)
+    let count = calendarCell.childElementCount
+
+    let newCalendar = document.createElement('div')
+    let newDepartures = document.createElement('div')
+    newCalendar.innerHTML = writeCalendarInput(routeIndex, count)
+    newDepartures.innerHTML = writeDeparturesInput(routeIndex, count)
+
+    calendarCell.appendChild(newCalendar)
+    departuresCell.appendChild(newDepartures)
+}
 
 /**
  * Reads OSM Data and process it into a GTFS object - which will be later converted into a set of CSVs
@@ -316,45 +423,6 @@ const debugGTFS = (elementId, data) => {
         let element = document.querySelector('#' + elementId)
         element.innerHTML = data
     }
-}
-
-const prepareManualInputs = () => {
-    manualData.agencies = []
-    let agencyManual = ''
-    OSMData.routeMasters.forEach(routeMaster => {
-        // Agency
-        // start by reading operator tags
-        let operatorArray = routeMaster.tags.filter(tag => tag.k === 'operator')
-        if (operatorArray.length) {
-            // OSM tags are unique, so if there are more than one, there's only one, we can read [0] directly instead of looping.
-            let operator = operatorArray[0].v
-            // if we don't have it on our array already
-            if (manualData.agencies.filter(agency => agency.agency_name === operator).length === 0) {
-                manualData.agencies.push({
-                    agency_name: operator,
-                })
-            }
-        }
-    })
-    agencyManual += `<table>
-        <thead>
-            <tr>
-                <th>Operator</th>
-                <th>URL</th>
-                <th>Timezone</th>
-            </tr>
-        </thead>
-        <tbody>`
-    manualData.agencies.forEach((agency, index) => {
-        agencyManual += `<tr>
-            <td>${agency.agency_name}</td>
-            <td><input id="agency${index}_url" value="${AGENCY_URL}"></td>
-            <td><input id="agency${index}_timezone" value="${AGENCY_TIMEZONE}"></td>
-        </tr>`
-    })
-    agencyManual += `</tbody></table>`
-
-    document.querySelector('#agency_manual').innerHTML = agencyManual
 }
 
 // Attach button event
