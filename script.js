@@ -10,6 +10,8 @@ let manualData = {}
 const OSM_API = 'https://www.openstreetmap.org/api/0.6'
 const DEBUG = true
 const MOCK = true
+const DEFAULT_START_DATE = '19000101'
+const DEFAULT_END_DATE = '20991231'
 
 // Temporary variables (will be filled by user later)
 const AGENCY_URL = 'http://www.cbtu.gov.br/'
@@ -192,6 +194,8 @@ const prepareManualInputs = () => {
                 <th>Route</th>
                 <th>Calendar</th>
                 <th>Departures</th>
+                <th>Start Date</th>
+                <th>End Date</th>
                 <th></th>
             </tr>
         </thead>
@@ -211,6 +215,8 @@ const prepareManualInputs = () => {
                 <td>${name}</td>
                 <td id="route${index}_calendar" class="routeCalendar"><div>${writeCalendarInput(index, 0)}</div></td>
                 <td id="route${index}_departures"><div>${writeDeparturesInput(index, 0)}</div></td>
+                <td id="route${index}_start_date"><input id="route${index}_start_date_input" class="form-control" placeholder="YYYYMMDD, blank if unknown"></td>
+                <td id="route${index}_end_date"><input id="route${index}_end_date_input" class="form-control" placeholder="YYYYMMDD, blank if not defined"></td>
                 <td>
                     <button onclick="duplicateRouteCalendar(${index})">➕</button>
                 </td>
@@ -378,27 +384,42 @@ const processSingleDeparture = departure => {
  */
 const convertToGTFS = () => {
     let agencies = []
+    let calendars = []
+    let shapes = []
     let stops = []
     let routes = []
-    let shapes = []
+
+    // first, process manual data
+    // Agencies
+    manualData.agencies.forEach(agency => {
+        agencies.push({
+            agency_name: manualData.agencies[agencies.length].agency_name,
+            agency_url: document.querySelector(`#agency${agencies.length}_url`).value,
+            agency_timezone: document.querySelector(`#agency${agencies.length}_timezone`).value,
+        })
+    })
+
+    // Calendars
+    manualData.routes.forEach((route, routeIndex) => {
+        let calendarCount = document.querySelector(`#route${routeIndex}_calendar`).childElementCount
+        for (let calendarIndex=0; calendarIndex<calendarCount; calendarIndex++) {
+            calendars.push({
+                service_id: `${route.ref}_${calendarIndex}`,
+                monday: document.querySelector(`#route${routeIndex}_calendar${calendarIndex}_monday`).checked ? 1 : 0,
+                tuesday: document.querySelector(`#route${routeIndex}_calendar${calendarIndex}_tuesday`).checked ? 1 : 0,
+                wednesday: document.querySelector(`#route${routeIndex}_calendar${calendarIndex}_wednesday`).checked ? 1 : 0,
+                thursday: document.querySelector(`#route${routeIndex}_calendar${calendarIndex}_thursday`).checked ? 1 : 0,
+                friday: document.querySelector(`#route${routeIndex}_calendar${calendarIndex}_friday`).checked ? 1 : 0,
+                saturday: document.querySelector(`#route${routeIndex}_calendar${calendarIndex}_saturday`).checked ? 1 : 0,
+                sunday: document.querySelector(`#route${routeIndex}_calendar${calendarIndex}_sunday`).checked ? 1 : 0,
+                start_date: document.querySelector(`#route${routeIndex}_start_date_input`).value || DEFAULT_START_DATE,
+                end_date: document.querySelector(`#route${routeIndex}_end_date_input`).value || DEFAULT_END_DATE,
+            })
+        }
+    })
+
     // for every routemaster we have
     OSMData.routeMasters.forEach(routeMaster => {
-        // Agency
-        // start by reading operator tags
-        let operatorArray = routeMaster.tags.filter(tag => tag.k === 'operator')
-        if (operatorArray.length) {
-            // OSM tags are unique, so if there are more than one, there's only one, we can read [0] directly instead of looping.
-            let operator = operatorArray[0].v
-            // if we don't have it on our array already
-            if (agencies.filter(agency => agency.agency_name === operator).length === 0) {
-                agencies.push({
-                    agency_name: operator,
-                    agency_url: document.querySelector(`#agency${agencies.length}_url`).value,
-                    agency_timezone: document.querySelector(`#agency${agencies.length}_timezone`).value,
-                })
-            }
-        }
-
         // Routes
         // (GTFS Routes are based on OSM routemaster (eg. L1) information, not on OSM route (eg. L1 A->B) information.)
         let route_type
@@ -460,10 +481,14 @@ const convertToGTFS = () => {
             shapes = shapes.concat(uniqueShape)
         })
     })
-    GTFSData.agencies = agencies
-    GTFSData.stops = stops
-    GTFSData.routes = routes
-    GTFSData.shapes = shapes
+
+    GTFSData = {
+        agencies,
+        calendars,
+        shapes,
+        stops,
+        routes,
+    }
     console.log(GTFSData)
     processGTFS()
 }
@@ -514,6 +539,9 @@ const processGTFS = () => {
     // Shapes
     let shapesCSV = writeCSVString(GTFSData.shapes)
     debugGTFS('shapes', shapesCSV)
+    // Calendar
+    let calendarCSV = writeCSVString(GTFSData.calendars)
+    debugGTFS('calendar', calendarCSV)
 }
 
 /**

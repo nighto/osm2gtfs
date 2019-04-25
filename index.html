@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" media="screen" href="style.css">
 </head>
-<body class="container">
+<body class="container-fluid">
     <h1>osm2gtfs</h1>
     <p>Please enter OSM routemaster IDs (for instance, 7869374):</p>
     <textarea name="routemasters" id="routemasters" cols="30" rows="10">7869374</textarea><br>
@@ -26,7 +26,7 @@
     <div id="route_calendar_manual"></div>
 
     <h2>GTFS info</h2>
-    <button id="convert">Convert OSM data into GTFS</button>
+    <button id="convert">Convert OSM and Manual data into GTFS</button>
     <h3>agency.txt</h3>
     <pre id="agency"></pre>
     <h3>stops.txt</h3>
@@ -39,6 +39,7 @@
     <pre id="shapes"></pre>
     <h3>stop_times.txt</h3>
     <h3>calendar.txt</h3>
+    <pre id="calendar"></pre>
 
     <script src="script.js"></script>
 </body>
