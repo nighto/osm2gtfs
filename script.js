@@ -223,6 +223,11 @@ const prepareManualInputs = () => {
     document.querySelector('#route_calendar_manual').innerHTML = routeCalendarManual
 }
 
+/**
+ * Creates a list of inputs for each calendar week day.
+ * @param {number} routeIndex The route index number on routes array
+ * @param {number} calendarIndex The calendar index number on calendars array
+ */
 const writeCalendarInput = (routeIndex, calendarIndex) => {
     return `<input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_monday">M
     <input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_tuesday">T
@@ -233,10 +238,19 @@ const writeCalendarInput = (routeIndex, calendarIndex) => {
     <input type="checkbox" id="route${routeIndex}_calendar${calendarIndex}_sunday">S`
 }
 
+/**
+ * Writes a text input so user can enter the departures values.
+ * @param {number} routeIndex The route index number on routes array
+ * @param {number} departureIndex The departure index number on departures array
+ */
 const writeDeparturesInput = (routeIndex, departureIndex) => {
     return `<input id="route${routeIndex}_departures${departureIndex}_input" class="form-control">`
 }
 
+/**
+ * Create a new route calendar entry on DOM, so user can enter multiple calendars for the same route.
+ * @param {number} routeIndex The route index number on routes array
+ */
 const duplicateRouteCalendar = routeIndex => {
     let calendarCell = document.querySelector(`#route${routeIndex}_calendar`)
     let departuresCell = document.querySelector(`#route${routeIndex}_departures`)
@@ -251,11 +265,27 @@ const duplicateRouteCalendar = routeIndex => {
     departuresCell.appendChild(newDepartures)
 }
 
+/**
+ * Splits departures string into an array of individual departures
+ * @param {string} departures Departures string, such as "12:00 13:00 14:00-18:00/30"
+ * @return {string[]} array of individual departures (already processing intervals) in hh:mm:ss format
+ */
 const processDepartures = departures => {
     let processedArray = []
-    let departuresArray = departures.replace(/\:/g, '').split(' ')
+    // removes :, and process each element
+    departures.replace(/\:/g, '').split(' ').forEach(departure => {
+        // putting them all on processedArray
+        processedArray = processedArray.concat(processDeparture(departure))
+    })
+    // finally, we need to deduplicate departures
+    return [...new Set(processedArray)]
 }
 
+/**
+ * Handles departure, calculating individual departures from a interval based departure
+ * @param {string} departure A departure string, such as "14:00" or "15:00-16:00/30"
+ * @return {string[]} an array of interval strings in the hh:mm:ss format
+ */
 const processDeparture = departure => {
     if (departure.toString().indexOf('-') === -1 && departure.toString().indexOf('/') === -1) {
         return [processSingleDeparture(departure)]
@@ -289,27 +319,53 @@ const processDeparture = departure => {
     return time
 }
 
+/**
+ * Returns the departure hour as a padded string, such as "01"
+ * @param {DateTime} date a DateTime to return the hour
+ * @param {DateTime} beginDate the interval begin DateTime, to make for instance 1 AM in the next day as "25"
+ * @return {string} departure hour, padded with zero, such as "02"
+ */
 const getPaddedHours = (date, beginDate) => {
     let beginDay = beginDate.getDate()
     let currentDay = date.getDate()
     if (beginDay === currentDay) {
         return getPaddedNumber(date.getHours())
     }
-    return getPaddedNumber(date.getHours() + 24)
+    return getPaddedNumber(date.getHours() + 24 * (currentDay - beginDay))
 }
 
+/**
+ * Returns the departure minute as a padded string, such as "00"
+ * @param {DateTime} date a DateTime to return the minute
+ * @return {string} the departure minute as a padded string, such as "00"
+ */
 const getPaddedMinutes = date => {
     return getPaddedNumber(date.getMinutes())
 }
 
+/**
+ * Returns the departure second as a padded string, such as "00"
+ * @param {DateTime} date a DateTime to return the second
+ * @return {string} the departure second as a padded string, such as "00"
+ */
 const getPaddedSeconds = date => {
     return getPaddedNumber(date.getSeconds())
 }
 
+/**
+ * Returns a number padded, such as 0 => "00"
+ * @param {(string|number)} num Number to be padded
+ * @return {string} padded number
+ */
 const getPaddedNumber = num => {
     return num.toString().padStart(2,'0')
 }
 
+/**
+ * Returns the departure as a hh:mm:ss string
+ * @param {string|number} departure A departure on the hhmm or hhmmss format
+ * @return {string} the departure on hh:mm:ss format
+ */
 const processSingleDeparture = departure => {
     if (departure.toString().length <= 4) {
         return `${departure.toString().padStart(4, '0').substr(0,2)}:${departure.toString().substr(-2)}:00`
