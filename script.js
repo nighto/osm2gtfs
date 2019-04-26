@@ -279,7 +279,7 @@ const duplicateRouteCalendar = routeIndex => {
 const processDepartures = departures => {
     let processedArray = []
     // removes :, and process each element
-    departures.replace(/\:/g, '').split(' ').forEach(departure => {
+    departures.trim().replace(/\:/g, '').split(' ').forEach(departure => {
         // putting them all on processedArray
         processedArray = processedArray.concat(processDeparture(departure))
     })
@@ -293,6 +293,9 @@ const processDepartures = departures => {
  * @return {string[]} an array of interval strings in the hh:mm:ss format
  */
 const processDeparture = departure => {
+    if (departure === '') {
+        return []
+    }
     if (departure.toString().indexOf('-') === -1 && departure.toString().indexOf('/') === -1) {
         return [processSingleDeparture(departure)]
     }
@@ -385,9 +388,10 @@ const processSingleDeparture = departure => {
 const convertToGTFS = () => {
     let agencies = []
     let calendars = []
+    let routes = []
     let shapes = []
     let stops = []
-    let routes = []
+    let trips = []
 
     // first, process manual data
     // Agencies
@@ -402,7 +406,7 @@ const convertToGTFS = () => {
     // Calendars
     manualData.routes.forEach((route, routeIndex) => {
         let calendarCount = document.querySelector(`#route${routeIndex}_calendar`).childElementCount
-        for (let calendarIndex=0; calendarIndex<calendarCount; calendarIndex++) {
+        for (let calendarIndex = 0; calendarIndex < calendarCount; calendarIndex++) {
             calendars.push({
                 service_id: `${route.ref}_${calendarIndex}`,
                 monday: document.querySelector(`#route${routeIndex}_calendar${calendarIndex}_monday`).checked ? 1 : 0,
@@ -414,6 +418,19 @@ const convertToGTFS = () => {
                 sunday: document.querySelector(`#route${routeIndex}_calendar${calendarIndex}_sunday`).checked ? 1 : 0,
                 start_date: document.querySelector(`#route${routeIndex}_start_date_input`).value || DEFAULT_START_DATE,
                 end_date: document.querySelector(`#route${routeIndex}_end_date_input`).value || DEFAULT_END_DATE,
+            })
+        }
+    })
+
+    // Trips
+    manualData.routes.forEach((route, routeIndex) => {
+        let departuresCount = document.querySelector(`#route${routeIndex}_departures`).childElementCount
+        for (let departureIndex = 0; departureIndex < departuresCount; departureIndex++) {
+            trips.push({
+                route_id: route.ref,
+                service_id: `${route.ref}_${departureIndex}`,
+                trip_id: `${route.ref}_${departureIndex}`,
+                shape_id: route.ref,
             })
         }
     })
@@ -485,9 +502,10 @@ const convertToGTFS = () => {
     GTFSData = {
         agencies,
         calendars,
+        routes,
         shapes,
         stops,
-        routes,
+        trips,
     }
     console.log(GTFSData)
     processGTFS()
@@ -530,18 +548,21 @@ const processGTFS = () => {
     // Agencies
     let agenciesCSV = writeCSVString(GTFSData.agencies)
     debugGTFS('agency', agenciesCSV)
-    // Stops
-    let stopsCSV = writeCSVString(GTFSData.stops)
-    debugGTFS('stops', stopsCSV)
+    // Calendar
+    let calendarCSV = writeCSVString(GTFSData.calendars)
+    debugGTFS('calendar', calendarCSV)
     // Routes
     let routesCSV = writeCSVString(GTFSData.routes)
     debugGTFS('routes', routesCSV)
     // Shapes
     let shapesCSV = writeCSVString(GTFSData.shapes)
     debugGTFS('shapes', shapesCSV)
-    // Calendar
-    let calendarCSV = writeCSVString(GTFSData.calendars)
-    debugGTFS('calendar', calendarCSV)
+    // Stops
+    let stopsCSV = writeCSVString(GTFSData.stops)
+    debugGTFS('stops', stopsCSV)
+    // Trips
+    let tripsCSV = writeCSVString(GTFSData.trips)
+    debugGTFS('trips', tripsCSV)
 }
 
 /**
@@ -570,8 +591,7 @@ const writeCSVString = data => {
  */
 const debugGTFS = (elementId, data) => {
     if (DEBUG) {
-        let element = document.querySelector('#' + elementId)
-        element.innerHTML = data
+        document.querySelector(`#code_${elementId}`).innerHTML = data
     }
 }
 

@@ -6,6 +6,8 @@
     <title>osm2gtfs</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script> <!-- only for Bootstrap -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <link rel="stylesheet" type="text/css" media="screen" href="style.css">
 </head>
 <body class="container-fluid">
@@ -27,19 +29,53 @@
 
     <h2>GTFS info</h2>
     <button id="convert">Convert OSM and Manual data into GTFS</button>
-    <h3>agency.txt</h3>
-    <pre id="agency"></pre>
-    <h3>stops.txt</h3>
-    <pre id="stops"></pre>
-    <h3>routes.txt</h3>
-    <pre id="routes"></pre>
-    <h3>trips.txt</h3>
-    (Depends on calendar)
-    <h3>shapes.txt</h3>
-    <pre id="shapes"></pre>
-    <h3>stop_times.txt</h3>
-    <h3>calendar.txt</h3>
-    <pre id="calendar"></pre>
+
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="agency-tab" data-toggle="tab" href="#agency" role="tab" aria-controls="agency" aria-selected="true">agency.txt</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="calendar-tab" data-toggle="tab" href="#calendar" role="tab" aria-controls="calendar" aria-selected="false">calendar.txt</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="routes-tab" data-toggle="tab" href="#routes" role="tab" aria-controls="routes" aria-selected="false">routes.txt</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="shapes-tab" data-toggle="tab" href="#shapes" role="tab" aria-controls="shapes" aria-selected="false">shapes.txt</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="stop_times-tab" data-toggle="tab" href="#stop_times" role="tab" aria-controls="stop_times" aria-selected="false">stop_times.txt</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="stops-tab" data-toggle="tab" href="#stops" role="tab" aria-controls="stops" aria-selected="false">stops.txt</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="trips-tab" data-toggle="tab" href="#trips" role="tab" aria-controls="trips" aria-selected="false">trips.txt</a>
+        </li>
+    </ul>
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="agency" role="tabpanel" aria-labelledby="agency-tab">
+            <pre><code id="code_agency"></code></pre>
+        </div>
+        <div class="tab-pane fade" id="calendar" role="tabpanel" aria-labelledby="calendar-tab">
+            <pre><code id="code_calendar"></code></pre>
+        </div>
+        <div class="tab-pane fade" id="routes" role="tabpanel" aria-labelledby="routes-tab">
+            <pre><code id="code_routes"></code></pre>
+        </div>
+        <div class="tab-pane fade" id="shapes" role="tabpanel" aria-labelledby="shapes-tab">
+            <pre><code id="code_shapes"></code></pre>
+        </div>
+        <div class="tab-pane fade" id="stop_times" role="tabpanel" aria-labelledby="stop_times-tab">
+            <pre><code id="code_stop_times"></code></pre>
+        </div>
+        <div class="tab-pane fade" id="stops" role="tabpanel" aria-labelledby="stops-tab">
+            <pre><code id="code_stops"></code></pre>
+        </div>
+        <div class="tab-pane fade" id="trips" role="tabpanel" aria-labelledby="trips-tab">
+            <pre><code id="code_trips"></code></pre>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
